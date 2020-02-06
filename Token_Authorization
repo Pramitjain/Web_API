@@ -1,6 +1,12 @@
  //http://www.dotnetawesome.com/2016/09/token-based-authentication-in-webapi.html
     //https://dotnettutorials.net/lesson/token-based-authentication-web-api/
 
+Install Package
+ Microsoft.Owin.Host.SystemWeb
+ Microsoft.Owin.Security.OAuth
+ Microsoft.Owin.Cors
+
+
 public class AuthorizeAttribute : System.Web.Http.AuthorizeAttribute
     {
         protected override void HandleUnauthorizedRequest(System.Web.Http.Controllers.HttpActionContext actionContext)
