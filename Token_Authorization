@@ -1,0 +1,207 @@
+ //http://www.dotnetawesome.com/2016/09/token-based-authentication-in-webapi.html
+    //https://dotnettutorials.net/lesson/token-based-authentication-web-api/
+
+public class AuthorizeAttribute : System.Web.Http.AuthorizeAttribute
+    {
+        protected override void HandleUnauthorizedRequest(System.Web.Http.Controllers.HttpActionContext actionContext)
+        {
+            if (!HttpContext.Current.User.Identity.IsAuthenticated)
+            {
+                base.HandleUnauthorizedRequest(actionContext);
+            }
+            else
+            {
+                actionContext.Response = new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.Forbidden);
+            }
+        }
+    }
+    
+    
+    
+    using Microsoft.Owin.Security.OAuth;
+using System.Security.Claims;
+using System.Threading.Tasks;
+
+namespace WebAPI_Authentication.Models
+{
+    public class MyAuthorizationServerProvider : OAuthAuthorizationServerProvider
+    {
+        public override async Task ValidateClientAuthentication(OAuthValidateClientAuthenticationContext context)
+        {
+
+            // validate the client Id and secret against database or from configuration file.  
+            context.Validated();
+
+        }
+        public override async Task GrantResourceOwnerCredentials(OAuthGrantResourceOwnerCredentialsContext context)
+        {
+            UserMasterRepository _repo = new UserMasterRepository();
+            {
+                var user = _repo.ValidateUser(context.UserName, context.Password);
+                if (user == null)
+                {
+                    context.SetError("invalid_grant", "Provided username and password is incorrect");
+                    return;
+                }
+                var identity = new ClaimsIdentity(context.Options.AuthenticationType);
+                identity.AddClaim(new Claim(ClaimTypes.Role, user.UserRoles));
+                identity.AddClaim(new Claim(ClaimTypes.Name, user.UserName));
+                identity.AddClaim(new Claim("Email", user.UserEmailID));
+                context.Validated(identity);
+            }
+        }
+    }
+}
+
+
+using System;
+using System.Linq;
+
+namespace WebAPI_Authentication.Models
+{
+    public class UserMasterRepository 
+    { 
+        //UserMaster context = new UserMaster();
+        //UserMasterRepository context = new UserMasterRepository();
+        //SECURITY_DBEntities context = new SECURITY_DBEntities();
+        //This method is used to check and validate the user credentials
+
+        ShippingBill_DispatchEntities context = new ShippingBill_DispatchEntities();
+        public UserMaster ValidateUser(string username, string password)
+        {
+            return context.UserMasters.FirstOrDefault(user =>
+            user.UserName.Equals(username, StringComparison.OrdinalIgnoreCase)
+            && user.UserPassword == password);
+        }
+        public void Dispose()
+        {
+            context.Dispose();
+        }
+    }
+}
+
+
+using System;
+using Microsoft.Owin;
+using Owin;
+using WebAPI_Authentication.Models;
+using Microsoft.Owin.Security.OAuth;
+using System.Web.Http;
+
+//assembly: OwinStartup(typeof(WebAPI_Authentication.Startup))]
+[assembly: OwinStartup(typeof(WebAPI_Authentication.Startup))]
+
+namespace WebAPI_Authentication
+{
+    public class Startup
+    {
+        public void Configuration(IAppBuilder app)
+        {
+            // For more information on how to configure your application, visit http://go.microsoft.com/fwlink/?LinkID=316888
+            //enable cors origin requests
+            app.UseCors(Microsoft.Owin.Cors.CorsOptions.AllowAll);
+
+            var myProvider = new MyAuthorizationServerProvider();
+            OAuthAuthorizationServerOptions options = new OAuthAuthorizationServerOptions
+            {
+                AllowInsecureHttp = true,
+                TokenEndpointPath = new PathString("/token"),
+                AccessTokenExpireTimeSpan = TimeSpan.FromDays(1),
+                Provider = myProvider
+            };
+            app.UseOAuthAuthorizationServer(options);
+            app.UseOAuthBearerAuthentication(new OAuthBearerAuthenticationOptions());
+
+
+            HttpConfiguration config = new HttpConfiguration();
+            WebApiConfig.Register(config);
+        }
+
+    }
+}
+
+
+//Controller
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Web.Http;
+using System.Linq;
+using System.Security.Claims;
+using System.Web.Http;
+
+namespace WebAPI_Authentication.Controllers
+{
+
+    //http://www.dotnetawesome.com/2016/09/token-based-authentication-in-webapi.html
+    //https://dotnettutorials.net/lesson/token-based-authentication-web-api/
+    public class TestController : ApiController
+    {
+        //[Authorize(Roles = "SuperAdmin, Admin, User")]
+        //[HttpGet]
+        //[Route("api/test/resource1")]
+        //public IHttpActionResult GetResource1()
+        //{
+        //    var identity = (ClaimsIdentity)User.Identity;
+        //    return Ok("Hello: " + identity.Name);
+        //}
+        ////This resource is only For Admin and SuperAdmin role
+        //[Authorize(Roles = "SuperAdmin, Admin")]
+        //[HttpGet]
+        //[Route("api/test/resource2")]
+        //public IHttpActionResult GetResource2()
+        //{
+        //    var identity = (ClaimsIdentity)User.Identity;
+        //    var Email = identity.Claims
+        //              .FirstOrDefault(c => c.Type == "Email").Value;
+        //    var UserName = identity.Name;
+
+        //    return Ok("Hello " + UserName + ", Your Email ID is :" + Email);
+        //}
+        ////This resource is only For SuperAdmin role
+        //[Authorize(Roles = "SuperAdmin")]
+        //[HttpGet]
+        //[Route("api/test/resource3")]
+        //public IHttpActionResult GetResource3()
+        //{
+        //    var identity = (ClaimsIdentity)User.Identity;
+        //    var roles = identity.Claims
+        //                .Where(c => c.Type == ClaimTypes.Role)
+        //                .Select(c => c.Value);
+        //    return Ok("Hello " + identity.Name + "Your Role(s) are: " + string.Join(",", roles.ToList()));
+        //}
+
+        [AllowAnonymous]
+        [HttpGet]
+        [Route("api/data/forall")]
+        public IHttpActionResult Get()
+        {
+            return Ok("Now server time is: " + DateTime.Now.ToString());
+        }
+
+        [Authorize]
+        [HttpGet]
+        [Route("api/data/authenticate")]
+        public IHttpActionResult GetForAuthenticate()
+        {
+            var identity = (ClaimsIdentity)User.Identity;
+            return Ok("Hello " + identity.Name);
+        }
+
+        [Authorize(Roles = "admin")]
+        [HttpGet]
+        [Route("api/data/authorize")]
+        public IHttpActionResult GetForAdmin()
+        {
+            var identity = (ClaimsIdentity)User.Identity;
+            var roles = identity.Claims
+                        .Where(c => c.Type == ClaimTypes.Role)
+                        .Select(c => c.Value);
+            return Ok("Hello " + identity.Name + " Role: " + string.Join(",", roles.ToList()));
+        }
+    }
+}
+
