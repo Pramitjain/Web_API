@@ -1,0 +1,95 @@
+   [HttpPost]
+        [Route("api/CheckLogin")]
+        public string CheckLogin(JObject data)
+        {
+            try
+            {
+                dynamic json = data;
+                string UserName = json.UserName;
+                string Password = json.Password;
+                bool RememberMe = json.RememberMe;
+
+                if (RememberMe)
+                {
+
+                }
+
+                //CookieHeaderValue cookies = Request.Headers.GetCookies("RememberMe").FirstOrDefault();
+                //if (cookies != null)
+                //{
+                //    sessionId = cookies["RememberMe"].Value;
+                //}
+
+                string status = string.Empty;
+                UserData user = new UserData();
+                DataTable dt = user.RC_GetUsers(UserName.Trim(), Utility.Encrypt(Password.Trim()), ref status);
+
+                if (dt.Rows.Count > 0)
+                {
+                    if (Convert.ToString(dt.Rows[0][2]).ToLower() == "admin")
+                        HttpContext.Current.Session["IsAdmin"] = 1;
+
+                    HttpContext.Current.Session["UserName"] = json.UserName;
+                    HttpContext.Current.Session["UserId"] = Convert.ToString(dt.Rows[0][0]);
+                    return JsonConvert.SerializeObject(new { Table = dt, Code = 200 });
+                }
+                else return JsonConvert.SerializeObject(new { Table = status, Code = 400 });
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.CreatetextFile(ex.ToString());
+                return JsonConvert.SerializeObject(new { Table = "Some thing Went Wrong please try again", Code = 500 });
+            }
+
+        }
+      
+// HTML
+
+ $("#btn_SubmitLogin").on("click", function () {
+            try {
+                var IsValidation = true;
+                var UserName = $("#txt_Name").val();
+                var Password = $("#txt_Password").val();
+                var RememberMe = $("#chk_RememberMe").is(':checked');
+
+                if (UserName == "" || UserName == null) {
+                    ErrorMsg = "Please Enter User Name";
+                    ErrorMessage("danger", ErrorMsg);
+                    $("#txt_Name").focus();
+                    IsValidation = false;
+                }
+                else if (Password == "" || Password == null) {
+                    ErrorMsg = "Please Enter Password";
+                    ErrorMessage("danger", ErrorMsg);
+                    $("#txt_Password").focus();
+                    IsValidation = false;
+                }
+                if (IsValidation) {
+                    var Input = {
+                        "UserName": UserName,
+                        "Password": Password,
+                        "RememberMe": RememberMe
+                    }
+                    $("#preloader").show();
+                    $.ajax({
+                        url: baseurl + "api/CheckLogin",
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(Input),
+                        success: function (result) {
+                            $("#preloader").hide();
+                            //alert(result);
+
+                            Reset();
+                            var data = JSON.parse(result);
+                            console.log(data.Code);
+                            if (data.Code != "500") {
+                                window.location.href = baseurl + "Admin/Home";
+                            }
+                        }
+                    })
+                }
+            } catch (e) {
+                $("#preloader").hide();
+            }
+        })
