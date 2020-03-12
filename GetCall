@@ -1,0 +1,103 @@
+  [HttpPost]
+        [Route("api/SearchStoreLocator")]
+        public string SearchStoreLocator(JObject data)
+        {
+            try
+            {
+                dynamic json = data;
+                string Prefix = json.Prefix;
+                UserData user = new UserData();
+                DataTable dt = user.RC_SearchStoreLocator(Prefix);
+
+                if (dt.Rows.Count > 0)
+                    return JsonConvert.SerializeObject(new { Table = dt, Code = 200 });
+                else return JsonConvert.SerializeObject(new { Table = "No Record Found for Search Result " + Prefix, Code = 400 });
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.CreatetextFile(ex.ToString());
+                return JsonConvert.SerializeObject(new { Table = "Some thing Went Wrong please try again", Code = 500 });
+            }
+
+        }
+        
+        
+ // Binding HTML
+ 
+ function GetStores(input) {
+    var Input = {
+        "Prefix": input
+    }
+
+    $("#preloader").show();
+    $.ajax({
+        url: baseurl + "api/SearchStoreLocator",
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(Input),
+        success: function (result) {
+            var data = JSON.parse(result);
+            var html = "";
+            $("#div_StoreDetails").html("");
+            if (data.Table.indexOf("Record") > 0) {
+                html += "<div>" + data.Table + "</div>";
+            }
+            else {
+                $.each(data.Table, function (key, item) {
+
+                    html += "<div>";
+                    html += "<div class='col-lg-3 col-sm-3 col-md-3' style='float:left;margin-top:2%;margin-bottom:2px;'>";
+                    html += "<div class='ui card'>";
+                    html += "<div class='content'>";
+					if((item.ShopName).length>19)
+					{
+						html += "<div class='header' title='"+item.ShopName+"' >" + (item.ShopName).substring(0, 19) + '...' + "</div>";
+					}
+					else html += "<div class='header' title='"+item.ShopName+"'>" + (item.ShopName) + "</div>";
+                    
+                    html += "<div class='meta'><span class='category'>" + item.City + "</span></div>";
+                    html += "<div style='max-height:200px;overflow:auto;min-height:200px;'>"
+                    if (item.EmailId != '')
+					{
+					  if((item.ShopName).length>18)
+						{
+                        	html += "<p title='"+item.ShopName+"'><span><i class='fa fa-paper-plane-o' aria-hidden='true'></i></span>&nbsp;&nbsp;<span class='card-text'>" + (item.EmailId).substring(0, 18) + '...' + "</span></p>";
+						 }
+					   else
+							{				
+                        html += "<p><span><i class='fa fa-paper-plane-o' aria-hidden='true'></i></span>&nbsp;&nbsp;<span class='card-text'>" + item.EmailId + "</span></p>";
+					}
+					}
+                    if (item.Address != '')
+                        html += "<p><span><i class='fa fa-map-marker' aria-hidden='true'></i></span>&nbsp;&nbsp;<span class='card-text'>" + item.Address + " </span></p>";
+
+                    if (item.PinCode != '')
+                        html += "<p><span><i class='fa fa-thumbtack' aria-hidden='true'></i></span>&nbsp;&nbsp;<span class='card-text'>" + item.PinCode + " </span></p>";
+
+                    if (item.State != '')
+                        html += "<p><span><i class='fa fa-road' aria-hidden='true'></i></span>&nbsp;&nbsp;<span class='card-text'>" + item.State + "</span></p>";
+
+                    if (item.StartTime != '')
+                        html += "<p><span><i class='fa fa-clock' aria-hidden='true'></i></span>&nbsp;&nbsp;<span class='card-text'>" + item.StartTime + "</span>&nbsp;-&nbsp;<span class='card-text'>" + item.Closetime + "</span></p>";
+
+
+                    html += "</div>";
+                    html += "</div>";// Content Close
+                    html += "<div class='extra content'><span><div class='right floated author'><i class='fa fa-phone-square'></i></span> " + item.Phone + "</div>";
+                    html += "</div>";
+                    html += "</div>";
+                    html += "</div>";
+                    html += "</div>";
+
+                    //html += "<div class='col-lg-3' style='border:1px solid red;float:left;'>" + item.ShopName + "</div>";
+
+                });
+            }
+
+            $("#div_StoreDetails").append(html);
+            $("#preloader").hide();
+
+        }
+    })
+
+}
