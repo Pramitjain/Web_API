@@ -1,0 +1,90 @@
+ public class SessionControllerHandler : HttpControllerHandler, IRequiresSessionState
+    {
+        public SessionControllerHandler(RouteData routeData)
+        : base(routeData)
+        { }
+    }
+
+    public class SessionHttpControllerRouteHandler : HttpControllerRouteHandler
+    {
+        protected override IHttpHandler GetHttpHandler(RequestContext requestContext)
+        {
+            return new SessionControllerHandler(requestContext.RouteData);
+        }
+    }
+    
+    //On Route Config
+    public static void RegisterRoutes(RouteCollection routes)
+        {
+            routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
+
+            routes.MapRoute(
+                name: "Default",
+                url: "{controller}/{action}/{id}",
+                defaults: new { controller = "Home", action = "Index", id = UrlParameter.Optional }
+            );
+            .RouteHandler = new SessionStateRouteHandler();
+        }
+    
+    //WebApi Config
+    
+     public static class WebApiConfig
+    {
+        public static void Register(HttpConfiguration config)
+        {
+            var httpControllerRouteHandler = typeof(HttpControllerRouteHandler).GetField("_instance",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+            if (httpControllerRouteHandler != null)
+            {
+                httpControllerRouteHandler.SetValue(null,
+                    new Lazy<HttpControllerRouteHandler>(() => new SessionHttpControllerRouteHandler(), true));
+            }
+
+            config.MapHttpAttributeRoutes();
+            config.Routes.MapHttpRoute(
+                name: "DefaultApi",
+                routeTemplate: "api/{controller}/{action}/{id}/{pageSize}/{currentPage}/{mode}",
+                defaults: new {
+                    id = RouteParameter.Optional,
+                    action = RouteParameter.Optional,
+                    pageSize = System.Web.Http.RouteParameter.Optional,
+                    currentPage = System.Web.Http.RouteParameter.Optional,
+                    mode = System.Web.Http.RouteParameter.Optional,
+                }
+            );
+
+            config.Formatters.Remove(config.Formatters.XmlFormatter);
+        }
+    }
+    
+    
+    
+      @if (!string.IsNullOrEmpty(Convert.ToString(HttpContext.Current.Session["IsAdmin"])))
+                {
+                    <div class="cateTitle has-sub-category open level1">
+                        <a class="cateItem" href="~/Admin/Register">Register User</a>
+                    </div>
+                }
+  //On Filters
+  
+  public class SessionIsAdmin : ActionFilterAttribute
+    {
+        public override void OnActionExecuting(ActionExecutingContext filterContext)
+        {
+            HttpContext ctx = HttpContext.Current;
+            try
+            {
+                if (string.IsNullOrEmpty(Convert.ToString(HttpContext.Current.Session["IsAdmin"])))
+                {
+                    filterContext.Result = new RedirectResult("~/Home/Login");
+                    return;
+                }
+                base.OnActionExecuting(filterContext);
+            }
+            catch (Exception ex)
+            {
+                filterContext.Result = new RedirectResult("~/Home");
+            }
+        }
+    }
