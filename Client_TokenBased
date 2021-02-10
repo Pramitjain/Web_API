@@ -1,3 +1,10 @@
+=================Example =========================
+
+============URL====================================
+
+https://reqres.in/
+
+
 static void Main()  
 {  
     string baseAddress = "http://localhost:9000/";  
