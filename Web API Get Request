@@ -1,0 +1,134 @@
+
+<add key="ServiceUrl" value="https://reqres.in/api/" />
+
+ static void Main(string[] args)
+        {
+
+            RunAsync1().Wait();
+
+
+        }
+ 
+ public static async Task RunAsync1()
+        {
+            string responsedata = string.Empty;
+            RequestHelper _req = new RequestHelper();
+            try
+            {
+                using (HttpResponseMessage response = await _req.GetRequest("users?page=2"))
+                {
+                    if (response != null)
+                    {
+                        if (response.IsSuccessStatusCode)
+                        {
+                            responsedata = await response.Content.ReadAsStringAsync();
+                            //Dictionary<string, string> sMessage = JsonConvert.DeserializeObject<Dictionary<string, string>>(responsedata);
+                            CallData _dtUserData = JsonConvert.DeserializeObject<CallData>(responsedata);
+                        }
+                        else
+                        {
+                            responsedata = await response.Content.ReadAsStringAsync();
+                            Dictionary<string, string> sMessage = JsonConvert.DeserializeObject<Dictionary<string, string>>(responsedata);
+
+
+                        }
+                    }
+
+                }
+            
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
+        }
+        
+  
+   public async Task<HttpResponseMessage> GetRequest(string requestUri)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                client.BaseAddress = new Uri(sServiceAddress);
+                client.DefaultRequestHeaders.Accept.Clear();
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                //client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Token", "AJIT");
+                return await client.GetAsync(requestUri);
+            }
+        }
+        
+   <add key="ServiceUrl" value="https://reqres.in/api/" />
+        
+    public class RequestHelper
+    {
+        string sServiceAddress = string.Empty;
+        public RequestHelper()
+        {
+            sServiceAddress = Convert.ToString(ConfigurationManager.AppSettings["ServiceUrl"]);
+        }
+        public string GetDom(HttpRequestBase Request)
+        {
+            string domainName = Request.Url.Host.ToLower();
+
+            return (domainName);
+        }
+
+        public async Task<HttpResponseMessage> PostRequest(Object obj, string requestUri)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                client.BaseAddress = new Uri(sServiceAddress);
+                client.DefaultRequestHeaders.Accept.Clear();
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                //StringContent content = new StringContent(JsonConvert.SerializeObject(obj), Encoding.UTF8, "application/json");
+                //response = await client.PostAsync(requestUri, content);
+
+                return await client.PostAsJsonAsync(requestUri, obj);
+            }
+        }
+
+        public async Task<HttpResponseMessage> GetRequest(string requestUri)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                client.BaseAddress = new Uri(sServiceAddress);
+                client.DefaultRequestHeaders.Accept.Clear();
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                //client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Token", "AJIT");
+                return await client.GetAsync(requestUri);
+            }
+        }
+
+        /// <summary>
+        /// Send AntiForign Token to Server
+        /// </summary>
+        /// <returns></returns>
+        public static string TokenHeaderValue()
+        {
+            string cookieToken, formToken;
+            AntiForgery.GetTokens(null, out cookieToken, out formToken);
+            return cookieToken + ":" + formToken;
+        }
+
+        /// <summary>
+        /// Use this at WEB API To Validate AntiForign Token at Server
+        /// </summary>
+        /// <param name="request"></param>
+        void ValidateRequestHeader(HttpRequestMessage request)
+        {
+            string cookieToken = "";
+            string formToken = "";
+
+            IEnumerable<string> tokenHeaders;
+            if (request.Headers.TryGetValues("RequestVerificationToken", out tokenHeaders))
+            {
+                string[] tokens = tokenHeaders.First().Split(':');
+                if (tokens.Length == 2)
+                {
+                    cookieToken = tokens[0].Trim();
+                    formToken = tokens[1].Trim();
+                }
+            }
+            AntiForgery.Validate(cookieToken, formToken);
+        }
+    }
